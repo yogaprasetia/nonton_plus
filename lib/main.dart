@@ -1,125 +1,136 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart' as dom;
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+      home: Scaffold(
+        body: HtmlGridView(),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class HtmlGridView extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _HtmlGridViewState createState() => _HtmlGridViewState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _HtmlGridViewState extends State<HtmlGridView> {
+  List<Map<String, String>> items = [];
+  bool _isLoading = false;
+  int _currentPage = 0;
+  ScrollController _scrollController = ScrollController();
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+    fetchAndParseHtml();
+  }
+
+  Future<void> fetchAndParseHtml() async {
+    final url = 'https://tv4.lk21official.mom/populer/page/$_currentPage/';
+    final response = await http.get(Uri.parse(url));
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _isLoading = true;
     });
+
+    if (response.statusCode == 200) {
+      final document = parse(response.body);
+      final divs = document.querySelectorAll('div.col-lg-2.col-sm-3.col-xs-4.page-$_currentPage.infscroll-item');
+
+      List<Map<String, String>> extractedItems = divs.map((div) {
+        final articleElement = div.querySelector('article.mega-item');
+        final posterElement = articleElement?.querySelector('figure.grid-poster a');
+        final imageElement = posterElement?.querySelector('img');
+        final titleElement = articleElement?.querySelector('header.grid-header h1.grid-title a');
+        final ratingElement = articleElement?.querySelector('div.grid-meta div.rating');
+        final qualityElement = articleElement?.querySelector('div.grid-meta div.quality');
+        final durationElement = articleElement?.querySelector('div.grid-meta div.duration');
+
+        return {
+          'title': titleElement?.text ?? '',
+          'href': posterElement?.attributes['href'] ?? '',
+          'image': imageElement?.attributes['src'] ?? '',
+          'rating': ratingElement?.text ?? '',
+          'quality': qualityElement?.text ?? '',
+          'duration': durationElement?.text ?? '',
+        };
+      }).toList();
+
+      setState(() {
+        items.addAll(extractedItems);
+        _isLoading = false;
+      });
+    } else {
+      print('Failed to load HTML: ${response.statusCode}');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent && !_isLoading) {
+      _currentPage++;
+      fetchAndParseHtml();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text('HTML Grid View'),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: Column(
+        children: [
+          Expanded(
+            child: GridView.builder(
+              controller: _scrollController,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return Card(
+                  child: Column(
+                    children: [
+                      Text(item['title'] ?? ''),
+                      Text(item['rating'] ?? ''),
+                      Text(item['quality'] ?? ''),
+                      Text(item['duration'] ?? ''),
+                    ],
+                  ),
+                );
+              },
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          if (_isLoading)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
             ),
-          ],
-        ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
