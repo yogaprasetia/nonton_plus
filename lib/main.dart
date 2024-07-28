@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' show parse;
 import 'package:html/dom.dart' as dom;
+import 'package:nonton_plus/screens/MoviesDetail.dart';
+import 'package:nonton_plus/screens/WebView.dart';
 
 void main() {
   runApp(MyApp());
@@ -98,35 +100,40 @@ class _HtmlGridViewState extends State<HtmlGridView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('HTML Grid View'),
+        title: const Text('HTML Grid View'),
       ),
       body: Column(
         children: [
           Expanded(
             child: GridView.builder(
               controller: _scrollController,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
               ),
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
-                return Card(
-                  child: Column(
-                    children: [
-                      Text(item['title'] ?? ''),
-                      Text(item['rating'] ?? ''),
-                      Text(item['quality'] ?? ''),
-                      Text(item['duration'] ?? ''),
-                    ],
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => MoviesDetail(item['href'] ?? '')));
+                  },
+                  child: Card(
+                    child: Column(
+                      children: [
+                        Text(item['title'] ?? ''),
+                        Text(item['rating'] ?? ''),
+                        Text(item['quality'] ?? ''),
+                        Text(item['duration'] ?? ''),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
           ),
           if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
+            const Padding(
+              padding: EdgeInsets.all(8.0),
               child: CircularProgressIndicator(),
             ),
         ],

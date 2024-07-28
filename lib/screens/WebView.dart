@@ -39,7 +39,7 @@ class _WebviewState extends State<Webview> {
           });
         },
         onNavigationRequest: (NavigationRequest request) {
-          if (request.url.startsWith('shopeeid://')) {
+          if (request.url.startsWith('https://lone-pack.com/')) {
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
