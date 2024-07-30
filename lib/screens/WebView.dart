@@ -39,9 +39,16 @@ class _WebviewState extends State<Webview> {
           });
         },
         onNavigationRequest: (NavigationRequest request) {
-          if (request.url.startsWith('https://lone-pack.com/')) {
-            return NavigationDecision.prevent;
+          List<String> adUrls = [
+            'https://lone-pack.com/',
+            'https://ak.wheceelt.net/',
+          ];
+          for (String adUrl in adUrls) {
+            if (request.url.contains(adUrl)) {
+              return NavigationDecision.prevent;
+            }
           }
+
           return NavigationDecision.navigate;
         },
       ))
