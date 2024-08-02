@@ -11,11 +11,13 @@ class Webview extends StatefulWidget {
 
 class _WebviewState extends State<Webview> {
   late final WebViewController controller;
+  late Future<List<String>> adUrlsFuture;
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    adUrlsFuture = _loadAdUrls();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeRight,
       DeviceOrientation.landscapeLeft,
@@ -23,50 +25,58 @@ class _WebviewState extends State<Webview> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     controller = WebViewController()
       ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (url) {
+        onPageStarted: (url) async {
           setState(() {
             isLoading = true;
           });
+
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          await controller.runJavaScriptReturningResult(
+              "document.getElementById('admad')?.remove();");
         },
         onProgress: (progress) {
           setState(() {
             isLoading = true;
           });
         },
-        onPageFinished: (url) {
+        onPageFinished: (String url) {
           setState(() {
             isLoading = false;
           });
         },
-        onNavigationRequest: (NavigationRequest request) {
-          List<String> adUrls = [
-            'https://lone-pack.com/',
-            'https://ak.wheceelt.net/',
-          ];
-          for (String adUrl in adUrls) {
-            if (request.url.contains(adUrl)) {
-              return NavigationDecision.prevent;
-            }
-          }
 
-          return NavigationDecision.navigate;
-        },
+        onNavigationRequest: (NavigationRequest request) async {
+        List<String> adUrls = await adUrlsFuture;
+        if (adUrls.any((adUrl) => request.url.contains(adUrl))) {
+          return NavigationDecision.prevent;
+        }
+        return NavigationDecision.navigate;
+      },
       ))
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..loadRequest(
         Uri.parse(widget.initialUrl),
       );
   }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    super.dispose();
+  Future<List<String>> _loadAdUrls() async {
+    final String contents = await rootBundle.loadString('assets/txt/easylist.txt');
+    return contents.split('\n').where((line) => line.isNotEmpty).toList();
   }
+
+@override
+void dispose() {
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeRight,
+    DeviceOrientation.landscapeLeft,
+  ]);
+
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' show parse;
 import 'package:nonton_plus/screens/MoviesDetail.dart';
+import 'package:nonton_plus/screens/SeriesDetail.dart';
 
 class AllMovies extends StatefulWidget {
   @override
@@ -98,12 +99,7 @@ class _AllMoviesState extends State<AllMovies> {
 
               if (titleElement?.text.contains("Daftar Film") == true) {
                 return null;
-              } 
-
-              if (titleElement?.text.contains("- Series") == true) {
-                return null;
               }
-
               final detailsElements =
                   div.querySelectorAll('div.search-content p');
               Map<String, String> details = {};
@@ -115,11 +111,11 @@ class _AllMoviesState extends State<AllMovies> {
                   details[key] = value;
                 }
               }
-
               return {
                 'title': titleElement?.text ?? '',
-                'href':
-                    'https://tv4.lk21official.mom/${posterElement?.attributes['href']}',
+                'href': titleElement!.text.contains('- Series')
+                    ? 'https://tv13.nontondrama.click/${posterElement?.attributes['href']}'
+                    : 'https://tv4.lk21official.mom/${posterElement?.attributes['href']}',
                 'image':
                     'https://tv4.lk21official.mom/${imageElement?.attributes['src']}',
                 'details': details.entries
@@ -201,11 +197,16 @@ class _AllMoviesState extends State<AllMovies> {
                 final item = items[index];
                 return GestureDetector(
                   onTap: () {
+                    bool isSeries =
+                        item['title']?.contains('- Series') ?? false;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MoviesDetail(item['href'] ?? '',
-                            item['image'] ?? '', item['title'] ?? ''),
+                        builder: (context) => isSeries
+                            ? SeriesDetail(item['href'] ?? '',
+                                item['image'] ?? '', item['title'] ?? '')
+                            : MoviesDetail(item['href'] ?? '',
+                                item['image'] ?? '', item['title'] ?? ''),
                       ),
                     );
                   },
